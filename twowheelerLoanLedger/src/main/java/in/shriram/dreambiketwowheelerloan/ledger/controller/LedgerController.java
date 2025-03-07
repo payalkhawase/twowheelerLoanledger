@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import in.shriram.dreambiketwowheelerloan.ledger.model.Customer;
 import in.shriram.dreambiketwowheelerloan.ledger.model.Ledger;
 import in.shriram.dreambiketwowheelerloan.ledger.servicei.LedgerServiceI;
 
@@ -21,10 +22,10 @@ public class LedgerController {
 	LedgerServiceI lsi;
 	
 	@PostMapping("/generateledger/{customerId}")
-	public ResponseEntity<Set<Ledger>> addData(@PathVariable("customerId") int customerId){
+	public ResponseEntity<Customer> addData(@PathVariable("customerId") int customerId){
 		
-		Set<Ledger> ls=lsi.addData(customerId);
-		return new ResponseEntity<Set<Ledger>>(ls,HttpStatus.CREATED);
+		Customer ls=lsi.addData(customerId);
+		return new ResponseEntity<Customer>(ls,HttpStatus.CREATED);
 		
 	}
 }

@@ -3,6 +3,7 @@ package in.shriram.dreambiketwowheelerloan.ledger.model;
 
 import java.util.Date;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -18,17 +19,18 @@ public class Ledger {
 	private int ledgerId;
 	private Date ledgerCreatedDate;
 	private double totalLoanAmount;
+	@Column(name = "payable_amount_with_interest")
 	private double payableAmountwithInterest;
 	private int tenure;
 	private double monthlyEMI;
-	private Date amountPaidtillDate;
+	private double amountPaidtillDate;
 	private double remainingAmount;
 	private Date nextEmiDatestart;
 	private Date nextEmiDateEnd;
 	private int defaulterCount;
 	private String previousEmitStatus;
 	private String currentMonthEmiStatus;
-	private String loanEndDate;
+	private Date loanEndDate;
 	private String loanStatus;
 
 
