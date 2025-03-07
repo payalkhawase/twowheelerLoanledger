@@ -1,5 +1,8 @@
 package in.shriram.dreambiketwowheelerloan.ledger.model;
 
+
+import java.util.Date;
+
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -13,15 +16,15 @@ public class Ledger {
 	@Id
 	@GeneratedValue(strategy = GenerationType.AUTO)
 	private int ledgerId;
-	private String ledgerCreatedDate;
+	private Date ledgerCreatedDate;
 	private double totalLoanAmount;
 	private double payableAmountwithInterest;
 	private int tenure;
 	private double monthlyEMI;
-	private double amountPaidtillDate;
+	private Date amountPaidtillDate;
 	private double remainingAmount;
-	private String nextEmiDatestart;
-	private String nextEmiDateEnd;
+	private Date nextEmiDatestart;
+	private Date nextEmiDateEnd;
 	private int defaulterCount;
 	private String previousEmitStatus;
 	private String currentMonthEmiStatus;
