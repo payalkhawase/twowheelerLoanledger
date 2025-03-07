@@ -10,6 +10,7 @@ import org.springframework.web.client.RestTemplate;
 
 import in.shriram.dreambiketwowheelerloan.ledger.model.Customer;
 import in.shriram.dreambiketwowheelerloan.ledger.model.Ledger;
+import in.shriram.dreambiketwowheelerloan.ledger.repository.CustomerRepo;
 import in.shriram.dreambiketwowheelerloan.ledger.repository.LedgerRepository;
 import in.shriram.dreambiketwowheelerloan.ledger.servicei.LedgerServiceI;
 @Service
@@ -21,8 +22,11 @@ public class LedgerServiceImpl implements LedgerServiceI{
 	@Autowired
 	RestTemplate rt;
 
+	@Autowired
+	CustomerRepo cr;
+	
 	@Override
-	public Set<Ledger> addData(int customerId) {
+	public Customer addData(int customerId) {
 		Customer cust=rt.getForObject("http://localhost:7777/apploan/getaCustomer/"+customerId, Customer.class);
 		
 		if(!cust.getLoandisburst().equals(null)) {
@@ -32,35 +36,52 @@ public class LedgerServiceImpl implements LedgerServiceI{
 		    float monthlyInterest=cust.getSanctionletter().getRateOfInterest();
 		    int tenureMonths = cust.getSanctionletter().getLoanTenureInMonth();
 		    
-		    double rateDecimal = monthlyInterest / 100;
-		    
-		    double totalAmountPayablEmi = totalLoanAmount * Math.pow(1 + (rateDecimal / 12), 12 * tenureMonths);
+		    double rateDecimal = (monthlyInterest / 12)/100;
+		    double   emi = (totalLoanAmount * rateDecimal * Math.pow(1 + rateDecimal,tenureMonths)) / (Math.pow(1 + rateDecimal, tenureMonths) - 1);
+		   // double totalAmountPayablEmi = totalLoanAmount * Math.pow(1 + (rateDecimal / 12), 12 * tenureMonths);
       
 			int requiredTenure=cust.getRequiredTenure();
 			
-			for(int i=1;i<=12;i++) {
-				
 				Ledger lo=new Ledger();
 				lo.setLedgerCreatedDate(new Date());
 				lo.setTotalLoanAmount(totalLoanAmount);
-				lo.setPayableAmountwithInterest(totalAmountPayablEmi*12);
-				lo.setTenure(requiredTenure);
-				lo.setMonthlyEMI(totalAmountPayablEmi);
-				lo.setAmountPaidtillDate(new Date());
+				lo.setPayableAmountwithInterest(emi);
+				lo.setTenure(tenureMonths);
+				lo.setMonthlyEMI(totalLoanAmount/tenureMonths);
+				// Calculate Amount Paid Till Date
+				
+				Date today=new Date();
+				
+				lo.setAmountPaidtillDate(lr.selectPayableAmountwithInterest(customerId));
+				
 				lo.setRemainingAmount(totalLoanAmount);
-				lo.setNextEmiDatestart(new Date());
-				lo.setNextEmiDateEnd(new Date());
-				lo.getDefaulterCount();
+				
+				Date nextEmiDate = new Date(today.getTime() + (1000L * 60 * 60 * 24 * 30L));
+				lo.setNextEmiDatestart(nextEmiDate);
+				
+				// Calculate next EMI end date (5 days after next EMI date)
+
+				Date nextEmiDateEnd = new Date(nextEmiDate.getTime() + (1000L * 60 * 60 * 24 * 5L));
+				lo.setNextEmiDateEnd(nextEmiDateEnd);
+				
+				// Calculate EMI statuses
+				
+				lo.setDefaulterCount(0);
 				lo.setPreviousEmitStatus("Not Paid");
 				lo.setCurrentMonthEmiStatus("Not Paid");
-				lo.setLoanEndDate("12-March-2026");
+				
+				// Calculate loan end date (adding loan tenure in months)
+				Date loanEndDate = new Date(today.getTime() + (1000L * 60 * 60 * 24 * 30L * tenureMonths));
+				
+				lo.setLoanEndDate(loanEndDate);
 				lo.setLoanStatus("loan open");
 				
 				Ledger l=lr.save(lo);
-				
-			}
+				cust.getLed().add(l);
+				cr.save(cust);
+			
 		}
-		return null;
+		return cust;
 		
 		
 	}
