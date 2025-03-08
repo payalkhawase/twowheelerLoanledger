@@ -13,8 +13,11 @@ public class TwowheelerLoanLedgerApplication {
 	}
 
 	
+
 	@Bean
-	RestTemplate rt() {
+	public RestTemplate rt()
+	{
 		return new RestTemplate();
 	}
+
 }

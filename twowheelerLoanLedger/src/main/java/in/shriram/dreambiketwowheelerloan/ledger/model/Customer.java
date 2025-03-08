@@ -1,6 +1,8 @@
 package in.shriram.dreambiketwowheelerloan.ledger.model;
 
 
+import java.util.Set;
+
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -24,7 +26,7 @@ public class Customer {
 	private String customerGender;
 	private String customerMobileNumber;
 	private double customerAdditionalMobileNumber;
-	private double customerAmountPaidForHome;
+	private double customerAmountPaidForBike;
 	private double customerTotalLoanRequired;
 	private String customerEmail;
 	private String password;
@@ -57,7 +59,7 @@ public class Customer {
 	private LoanDisbursement loandisburst;
 	
 	@OneToMany(cascade = CascadeType.ALL)
-	private Ledger led;
+	private Set<Ledger> led;
 	
 	@OneToOne(cascade = CascadeType.ALL)
 	@JoinColumn(name = "sanctionId")
