@@ -2,6 +2,8 @@ package in.shriram.dreambiketwowheelerloan.ledger;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
+import org.springframework.web.client.RestTemplate;
 
 @SpringBootApplication
 public class TwowheelerLoanLedgerApplication {
@@ -10,4 +12,9 @@ public class TwowheelerLoanLedgerApplication {
 		SpringApplication.run(TwowheelerLoanLedgerApplication.class, args);
 	}
 
+	
+	@Bean
+	RestTemplate rt() {
+		return new RestTemplate();
+	}
 }
