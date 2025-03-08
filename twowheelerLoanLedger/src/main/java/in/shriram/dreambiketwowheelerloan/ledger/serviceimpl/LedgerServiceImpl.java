@@ -1,5 +1,6 @@
 package in.shriram.dreambiketwowheelerloan.ledger.serviceimpl;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
@@ -31,15 +32,17 @@ public class LedgerServiceImpl implements LedgerServiceI{
 	public Customer addData(int customerId) {
 		Customer cust=rt.getForObject("http://localhost:7777/apploan/getaCustomer/"+customerId, Customer.class);
 		
-		if(!cust.getLoandisburst().equals(null)) {
+		if (cust.getLoandisburst() != null) {
+ 
 			
 			
 			double totalLoanAmount=cust.getSanctionletter().getLoanAmtSanctioned();
 		    float monthlyInterest=cust.getSanctionletter().getRateOfInterest();
 		    int tenureMonths = cust.getSanctionletter().getLoanTenureInMonth();
 		    
-		    double rateDecimal = (monthlyInterest / 12)/100;
-		    double   emi = (totalLoanAmount * rateDecimal * Math.pow(1 + rateDecimal,tenureMonths)) / (Math.pow(1 + rateDecimal, tenureMonths) - 1);
+		    double rateDecimal = (monthlyInterest / 100) / 12;
+		    double emi = (totalLoanAmount * rateDecimal * Math.pow(1 + rateDecimal, tenureMonths)) / (Math.pow(1 + rateDecimal, tenureMonths) - 1);
+
 		   // double totalAmountPayablEmi = totalLoanAmount * Math.pow(1 + (rateDecimal / 12), 12 * tenureMonths);
       
 			int requiredTenure=cust.getRequiredTenure();
@@ -49,15 +52,20 @@ public class LedgerServiceImpl implements LedgerServiceI{
 				lo.setTotalLoanAmount(totalLoanAmount);
 				lo.setPayableAmountwithInterest(emi);
 				lo.setTenure(tenureMonths);
-				lo.setMonthlyEMI(totalLoanAmount/tenureMonths);
+				lo.setMonthlyEMI(emi);
+
 				// Calculate Amount Paid Till Date
 				
 				
 				Date today=new Date();
-				if(!(lr.selectPayableAmountwithInterest().equals(null)))	
+				if (lr.selectPayableAmountwithInterest() != null)
 				lo.setAmountPaidtillDate(lr.selectPayableAmountwithInterest());
 				
-				lo.setRemainingAmount(totalLoanAmount);
+				Double amountPaid = lr.selectPayableAmountwithInterest();
+				if (amountPaid == null) {
+				    amountPaid = 0.0;
+				}
+				lo.setRemainingAmount(totalLoanAmount - amountPaid);
 				
 				Date nextEmiDate = new Date(today.getTime() + (1000L * 60 * 60 * 24 * 30L));
 				lo.setNextEmiDatestart(nextEmiDate);
@@ -77,10 +85,18 @@ public class LedgerServiceImpl implements LedgerServiceI{
 				Date loanEndDate = new Date(today.getTime() + (1000L * 60 * 60 * 24 * 30L * tenureMonths));
 				
 				lo.setLoanEndDate(loanEndDate);
-				lo.setLoanStatus("loan open");
+				if (lo.getRemainingAmount() <= 0) { 
+				    lo.setLoanStatus("closed"); 
+				} else { 
+				    lo.setLoanStatus("loan open"); 
+				}
 				
 				Ledger l=lr.save(lo);
+				if (cust.getLed() == null) {
+				    cust.setLed(new ArrayList());
+				}
 				cust.getLed().add(l);
+
 				cr.save(cust);
 			
 		}

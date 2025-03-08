@@ -15,6 +15,7 @@ public interface LedgerRepository extends JpaRepository<Ledger, Integer>{
 	//@Query(value = "SELECT SUM(payable_amount_with_interest) FROM Ledger WHERE customer_id = :customerId", nativeQuery = true)
 	//Double selectPayableAmountwithInterest(@Param("customerId") int customerId);
 	
-	@Query(value="SELECT SUM(payable_amountwith_interest) FROM  twowheelerloan.ledger inner join  twowheelerloan.customer_led on ledger.ledger_id=customer_led.led_ledger_id where customer_led.customer_customer_id=1 and ledger.previous_emit_status='paid'",nativeQuery = true)
-	public Double selectPayableAmountwithInterest( );
+	@Query(value="SELECT SUM(l.payable_amountwith_interest) FROM ledger l INNER JOIN customer_led cl ON l.ledger_id = cl.led_ledger_id WHERE cl.customer_customer_id = :customerId AND l.previous_emit_status = 'paid'", nativeQuery = true)
+	Double selectPayableAmountwithInterest();
+
 }
