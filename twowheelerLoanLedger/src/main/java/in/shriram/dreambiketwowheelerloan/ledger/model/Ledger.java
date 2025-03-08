@@ -19,11 +19,11 @@ public class Ledger {
 	private int ledgerId;
 	private Date ledgerCreatedDate;
 	private double totalLoanAmount;
-	@Column(name = "payable_amount_with_interest")
+	//@Column(name = "payable_amount_with_interest",nullable=false)
 	private double payableAmountwithInterest;
 	private int tenure;
 	private double monthlyEMI;
-	private double amountPaidtillDate;
+	private double amountPaidtillDate=0.0;
 	private double remainingAmount;
 	private Date nextEmiDatestart;
 	private Date nextEmiDateEnd;

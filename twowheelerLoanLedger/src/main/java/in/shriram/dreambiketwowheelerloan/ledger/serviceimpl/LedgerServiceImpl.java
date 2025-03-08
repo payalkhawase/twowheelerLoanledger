@@ -50,9 +50,10 @@ public class LedgerServiceImpl implements LedgerServiceI{
 				lo.setMonthlyEMI(totalLoanAmount/tenureMonths);
 				// Calculate Amount Paid Till Date
 				
-				Date today=new Date();
 				
-				lo.setAmountPaidtillDate(lr.selectPayableAmountwithInterest(customerId));
+				Date today=new Date();
+				if(!(lr.selectPayableAmountwithInterest().equals(null)))	
+				lo.setAmountPaidtillDate(lr.selectPayableAmountwithInterest());
 				
 				lo.setRemainingAmount(totalLoanAmount);
 				
