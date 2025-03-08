@@ -1,11 +1,8 @@
 package in.shriram.dreambiketwowheelerloan.ledger.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import in.shriram.dreambiketwowheelerloan.ledger.model.Customer;
 import in.shriram.dreambiketwowheelerloan.ledger.model.Ledger;
 @Repository
 public interface LedgerRepository extends JpaRepository<Ledger, Integer>{

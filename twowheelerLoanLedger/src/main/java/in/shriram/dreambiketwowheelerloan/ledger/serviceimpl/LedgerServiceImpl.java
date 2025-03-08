@@ -2,10 +2,7 @@ package in.shriram.dreambiketwowheelerloan.ledger.serviceimpl;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.Set;
-
+import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -65,20 +62,33 @@ public class LedgerServiceImpl implements LedgerServiceI{
 		ledger.setPayableAmountwithInterest(payableAmountWithInterest);
 		ledger.setTenure(tenureInYear);
 		ledger.setMonthlyEMI(emi);
-
-		// Calculate total amount paid till date
-		double lastAmountPaid = customer.getLed().isEmpty() ? 0
-			: customer.getLed().get(customer.getLed().size() - 1).getAmountPaidtillDate();
 		
+        List<Ledger> list=new ArrayList<>();
+        list=customer.getLed();
+        
+		// Calculate total amount paid till date
+		double lastAmountPaid =list.isEmpty() ? 0
+			: customer.getLed().get(customer.getLed().size()-1).getAmountPaidtillDate();
+		/*double amountPaidTillDate=0;
+		
+        if(list.isEmpty())
+        {
+        	amountPaidTillDate=0;
+        }
+        else
+        {
+        	if(cr.selectPayableAmountwithInterest() != 0)
+        	amountPaidTillDate= cr.selectPayableAmountwithInterest();
+        }
+        */
 		//double lastAmountPaid = customer.getLed().isEmpty() ? 0
 		//	    : ((Ledger) customer.getLed()).getAmountPaidtillDate();
 
-		double amountPaidTillDate = lastAmountPaid + payableAmountWithInterest;
-		ledger.setAmountPaidtillDate(amountPaidTillDate);
-
+		ledger.setAmountPaidtillDate(lastAmountPaid);
+		double amountPaidTillDate=lastAmountPaid;
 		// Calculate remaining amount
-//		Double remainingAmount = payableAmountWithInterest - amountPaidTillDate;
-		Double remainingAmount = Math.max(0, payableAmountWithInterest - amountPaidTillDate);
+		Double remainingAmount = payableAmountWithInterest - amountPaidTillDate;
+//		Double remainingAmount = Math.max(0, payableAmountWithInterest - amountPaidTillDate);
 
 		ledger.setRemainingAmount(remainingAmount);
 
@@ -122,7 +132,8 @@ public class LedgerServiceImpl implements LedgerServiceI{
 
 		// Set loan status
 		ledger.setLoanStatus(remainingAmount > 0 ? "Ongoing" : "Completed");
-          Ledger lo=lr.save(ledger);
+		
+         Ledger lo=lr.save(ledger);
 		// Add ledger entry
 		customer.getLed().add(lo);
 
