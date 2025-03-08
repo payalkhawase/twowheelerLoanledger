@@ -1,6 +1,7 @@
 package in.shriram.dreambiketwowheelerloan.ledger.model;
 
 
+import java.util.List;
 import java.util.Set;
 
 import jakarta.persistence.CascadeType;
@@ -59,7 +60,7 @@ public class Customer {
 	private LoanDisbursement loandisburst;
 	
 	@OneToMany(cascade = CascadeType.ALL)
-	private Set<Ledger> led;
+	private List <Ledger> led;
 	
 	@OneToOne(cascade = CascadeType.ALL)
 	@JoinColumn(name = "sanctionId")
