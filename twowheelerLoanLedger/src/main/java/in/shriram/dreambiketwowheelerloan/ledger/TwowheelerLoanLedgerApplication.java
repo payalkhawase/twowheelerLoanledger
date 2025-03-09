@@ -12,6 +12,8 @@ public class TwowheelerLoanLedgerApplication {
 		SpringApplication.run(TwowheelerLoanLedgerApplication.class, args);
 	}
 
+	
+
 	@Bean
 	public RestTemplate rt()
 	{
