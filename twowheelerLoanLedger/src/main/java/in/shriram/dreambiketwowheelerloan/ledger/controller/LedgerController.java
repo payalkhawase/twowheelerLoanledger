@@ -18,6 +18,7 @@ public class LedgerController {
 	@Autowired
 	LedgerServiceI lsi;
 	
+
 	@PostMapping("/generateledger/{customerId}")
 	public ResponseEntity<Customer> addData(@PathVariable("customerId") int customerId){
 		
