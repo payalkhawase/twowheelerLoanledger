@@ -10,7 +10,7 @@ import org.springframework.web.client.RestTemplate;
 
 import in.shriram.dreambiketwowheelerloan.ledger.model.Customer;
 import in.shriram.dreambiketwowheelerloan.ledger.model.Ledger;
-
+import in.shriram.dreambiketwowheelerloan.ledger.model.SanctionLetter;
 import in.shriram.dreambiketwowheelerloan.ledger.repository.CustomerRepo;
 import in.shriram.dreambiketwowheelerloan.ledger.repository.LedgerRepository;
 import in.shriram.dreambiketwowheelerloan.ledger.servicei.LedgerServiceI;
@@ -32,252 +32,55 @@ public class LedgerServiceImpl implements LedgerServiceI{
 
 		Customer customer=rt.getForObject("http://localhost:7777/apploan/getaCustomer/"+customerId, Customer.class);
 
-		// Initialize ledger list if null
-		if (customer.getLed() == null) {
-			customer.setLed(new ArrayList());
-		}
 
-		// Fetch loan details
-		Double principal = customer.getSanctionletter().getLoanAmtSanctioned();
-		Double rateOfInterest = (double) customer.getSanctionletter().getRateOfInterest();
-		Integer tenureInYear = customer.getSanctionletter().getLoanTenureInMonth();
+		   if (customer == null || customer.getSanctionletter() == null) {
+	            throw new RuntimeException("Customer or sanction letter not found for ID: " + customerId);
+	        }
+	        
+	        SanctionLetter sanctionLetter = customer.getSanctionletter();
+	        double payableAmountWithInterest = sanctionLetter.getLoanAmtSanctioned() * Math.pow(1 + (sanctionLetter.getRateOfInterest() / 12) / 100, sanctionLetter.getLoanTenureInMonth());
+	        double rateOfInterest = sanctionLetter.getRateOfInterest();
+	        int totalMonths = sanctionLetter.getLoanTenureInMonth();
+	        
+	        if (payableAmountWithInterest <= 0 || rateOfInterest <= 0 || totalMonths <= 0) {
+	            throw new RuntimeException("Invalid loan details for Customer ID: " + customerId);
+	        }
 
-		if (principal == null || rateOfInterest == null || tenureInYear == null) {
-			throw new RuntimeException("Required loan details are missing for Customer ID: " + customerId);
-		}
+	        double monthlyInterestRate = (rateOfInterest / 12) / 100;
+	        double remainingAmount = payableAmountWithInterest;
+	        double amountPaidTillDate = customer.getLed().stream().mapToDouble(Ledger::getAmountPaidtillDate).sum();
 
-		int totalMonths = customer.getSanctionletter().getLoanTenureInMonth();
-		
-		double monthlyInterestRate = (rateOfInterest / 12 )/ 100;
+	        double previousRemainingAmount = customer.getLed().isEmpty() ? payableAmountWithInterest : customer.getLed().get(customer.getLed().size() - 1).getRemainingAmount();
+	        double emi = (previousRemainingAmount * monthlyInterestRate * Math.pow(1 + monthlyInterestRate, totalMonths))
+	                    / (Math.pow(1 + monthlyInterestRate, totalMonths) - 1);
+	        remainingAmount = Math.max(0, previousRemainingAmount - emi);
+	        amountPaidTillDate += emi;
+	        
+	        Ledger ledger = new Ledger();
+	        ledger.setLedgerCreatedDate(LocalDate.now());
+	        ledger.setTotalLoanAmount(sanctionLetter.getLoanAmtSanctioned());
+	        ledger.setPayableAmountwithInterest(payableAmountWithInterest);
+	        ledger.setTenure(totalMonths);
+	        ledger.setMonthlyEMI(emi);
+	        ledger.setAmountPaidtillDate(amountPaidTillDate);
+	        ledger.setRemainingAmount(remainingAmount);
+	        ledger.setNextEmiDatestart(LocalDate.now().plusMonths(1));
+	        ledger.setNextEmiDateEnd(LocalDate.now().plusMonths(2));
+	        
+	        int defaulterCount = (int) customer.getLed().stream().filter(l -> "Pending".equals(l.getCurrentMonthEmiStatus())).count();
+	        ledger.setDefaulterCount(defaulterCount);
+	        
+	        String previousEmiStatus = customer.getLed().isEmpty() ? "N/A" : "Paid";
+	        ledger.setPreviousEmitStatus(previousEmiStatus);
+	        
+	        ledger.setCurrentMonthEmiStatus(remainingAmount == 0 ? "Paid" : "Pending");
+	        ledger.setLoanEndDate(LocalDate.now().plusMonths(totalMonths));
+	        ledger.setLoanStatus(remainingAmount > 0 ? "Open" : "Closed");
 
-		// EMI Calculation (Reducing Balance Method)
-		double emi = (principal * monthlyInterestRate * Math.pow(1 + monthlyInterestRate, totalMonths))
-				/ (Math.pow(1 + monthlyInterestRate, totalMonths) - 1);
-		Double payableAmountWithInterest = emi * totalMonths; // Total payable amount
+	        Ledger savedLedger = lr.save(ledger);
+	        customer.getLed().add(savedLedger);
+	        cr.save(customer);
 
-		// Create new Ledger entry
-		Ledger ledger = new Ledger();
-		ledger.setLedgerCreatedDate(LocalDate.now().toString());
-		ledger.setTotalLoanAmount(customer.getLoandisburst().getTotalAmount());
-		ledger.setPayableAmountwithInterest(payableAmountWithInterest);
-		ledger.setTenure(tenureInYear);
-		ledger.setMonthlyEMI(emi);
-		
-        List<Ledger> list=new ArrayList<>();
-        list=customer.getLed();
-        
-		// Calculate total amount paid till date
-		double lastAmountPaid =list.isEmpty() ? 0
-			: customer.getLed().get(customer.getLed().size()-1).getAmountPaidtillDate();
-		/*double amountPaidTillDate=0;
-		
-        if(list.isEmpty())
-        {
-        	amountPaidTillDate=0;
-        }
-        else
-        {
-        	if(cr.selectPayableAmountwithInterest() != 0)
-        	amountPaidTillDate= cr.selectPayableAmountwithInterest();
-        }
-        */
-		//double lastAmountPaid = customer.getLed().isEmpty() ? 0
-		//	    : ((Ledger) customer.getLed()).getAmountPaidtillDate();
-
-		ledger.setAmountPaidtillDate(lastAmountPaid);
-		double amountPaidTillDate=lastAmountPaid;
-		// Calculate remaining amount
-		Double remainingAmount = payableAmountWithInterest - amountPaidTillDate;
-//		Double remainingAmount = Math.max(0, payableAmountWithInterest - amountPaidTillDate);
-
-		ledger.setRemainingAmount(remainingAmount);
-
-		// Set EMI Dates
-		LocalDate lastEmiDate = customer.getLed().isEmpty() ? LocalDate.now()
-			: LocalDate.parse(customer.getLed().get(customer.getLed().size() - 1).getLedgerCreatedDate());
-		//LocalDate lastEmiDate = customer.getLed().isEmpty() ? LocalDate.now()
-			//    : LocalDate.parse(customer.getLed().stream().reduce((first, second) -> second).get().getLedgerCreatedDate());
-		
-		LocalDate nextEmiStartDate = lastEmiDate.plusMonths(1);
-		LocalDate nextEmiEndDate = nextEmiStartDate.plusMonths(1);
-		ledger.setNextEmiDatestart(nextEmiStartDate.toString());
-		ledger.setNextEmiDateEnd(nextEmiEndDate.toString());
-
-		// Defaulter Count Tracking
-		long missedEmis = customer.getLed().stream().filter(l -> "Missed".equals(l.getCurrentMonthEmiStatus()))
-				.count();
-		int defaulterCount = (int) missedEmis;
-		if ( payableAmountWithInterest== 0) {
-			defaulterCount++;
-		}
-		ledger.setDefaulterCount(defaulterCount);
-
-		// Set EMI status
-		String previousEmiStatus = customer.getLed().isEmpty() ? "N/A"
-				: customer.getLed().get(customer.getLed().size() - 1).getCurrentMonthEmiStatus();
-		
-		//String previousEmiStatus = customer.getLed().isEmpty() ? "N/A"
-			//    : customer.getLed().stream().reduce((first, second) -> second).get().getCurrentMonthEmiStatus();
-		ledger.setPreviousEmitStatus(previousEmiStatus);
-		ledger.setCurrentMonthEmiStatus(payableAmountWithInterest == 0 ? "Missed" : "Paid");
-
-		// Loan end date calculation
-		//LocalDate firstEmiDate = customer.getLed().isEmpty() ? LocalDate.now()
-		//		: LocalDate.parse(customer.getLed().get(0).getLedgerCreatedDate());
-		
-		LocalDate firstEmiDate = customer.getLed().isEmpty() ? LocalDate.now()
-			    : LocalDate.parse(customer.getLed().iterator().next().getLedgerCreatedDate());
-		LocalDate loanEndDate = firstEmiDate.plusYears(tenureInYear);
-		ledger.setLoanEndDate(loanEndDate.toString());
-
-		// Set loan status
-		ledger.setLoanStatus(remainingAmount > 0 ? "Ongoing" : "Completed");
-		
-         Ledger lo=lr.save(ledger);
-		// Add ledger entry
-		customer.getLed().add(lo);
-
-		// Save customer with updated ledger
-		
-		//customer.setLed(lo);
-		cr.save(customer);
-		
-		return customer;
-		
-		
-		
-//		Customer cust=rt.getForObject("http://localhost:7777/apploan/getaCustomer/"+customerId, Customer.class);
-//		
-//		if(!cust.getLoandisburst().equals(null)) {
-//			
-//			
-//			double totalLoanAmount=cust.getSanctionletter().getLoanAmtSanctioned();
-//		    float monthlyInterest=cust.getSanctionletter().getRateOfInterest();
-//		    int tenureMonths = cust.getSanctionletter().getLoanTenureInMonth();
-//		    
-//		    double rateDecimal = (monthlyInterest / 12)/100;
-//		    double   emi = (totalLoanAmount * rateDecimal * Math.pow(1 + rateDecimal,tenureMonths)) / (Math.pow(1 + rateDecimal, tenureMonths) - 1);
-//		   // double totalAmountPayablEmi = totalLoanAmount * Math.pow(1 + (rateDecimal / 12), 12 * tenureMonths);
-//      
-//			int requiredTenure=cust.getRequiredTenure();
-//			
-//				Ledger lo=new Ledger();
-//				lo.setLedgerCreatedDate(new Date());
-//				lo.setTotalLoanAmount(totalLoanAmount);
-//				lo.setPayableAmountwithInterest(emi);
-//				lo.setTenure(tenureMonths);
-//				lo.setMonthlyEMI(totalLoanAmount/tenureMonths);
-//				// Calculate Amount Paid Till Date
-//				
-//				
-//				Date today=new Date();
-//				if(!(lr.selectPayableAmountwithInterest().equals(null)))	
-//				lo.setAmountPaidtillDate(lr.selectPayableAmountwithInterest());
-//				
-//				lo.setRemainingAmount(totalLoanAmount);
-//				
-//				Date nextEmiDate = new Date(today.getTime() + (1000L * 60 * 60 * 24 * 30L));
-//				lo.setNextEmiDatestart(nextEmiDate);
-//				
-//				// Calculate next EMI end date (5 days after next EMI date)
-//
-//				Date nextEmiDateEnd = new Date(nextEmiDate.getTime() + (1000L * 60 * 60 * 24 * 5L));
-//				lo.setNextEmiDateEnd(nextEmiDateEnd);
-//				
-//				// Calculate EMI statuses
-//				
-//				lo.setDefaulterCount(0);
-//				lo.setPreviousEmitStatus("Not Paid");
-//				lo.setCurrentMonthEmiStatus("Not Paid");
-//				
-//				// Calculate loan end date (adding loan tenure in months)
-//				Date loanEndDate = new Date(today.getTime() + (1000L * 60 * 60 * 24 * 30L * tenureMonths));
-//				
-//				lo.setLoanEndDate(loanEndDate);
-//				lo.setLoanStatus("loan open");
-//				
-//				Ledger l=lr.save(lo);
-//				cust.getLed().add(l);
-//				cr.save(cust);
-			
-
-		//return cr.save();;
-		
-		
-		
-//		if (cust.getLoandisburst() != null) {
-// 
-//			
-//			
-//		double totalLoanAmount=cust.getSanctionletter().getLoanAmtSanctioned();
-//	    float monthlyInterest=cust.getSanctionletter().getRateOfInterest();
-//	    int tenureMonths = cust.getSanctionletter().getLoanTenureInMonth();
-//		    
-//		double rateDecimal = (monthlyInterest / 100) / 12;
-//	    double emi = (totalLoanAmount * rateDecimal * Math.pow(1 + rateDecimal, tenureMonths)) / (Math.pow(1 + rateDecimal, tenureMonths) - 1);
-//
-//		   // double totalAmountPayablEmi = totalLoanAmount * Math.pow(1 + (rateDecimal / 12), 12 * tenureMonths);
-//      
-//		int requiredTenure=cust.getRequiredTenure();
-//			
-//		Ledger lo=new Ledger();
-//		lo.setLedgerCreatedDate(new Date());
-//		lo.setTotalLoanAmount(totalLoanAmount);
-//		lo.setPayableAmountwithInterest(emi);
-//		lo.setTenure(tenureMonths);
-//		lo.setMonthlyEMI(emi);
-//
-//				// Calculate Amount Paid Till Date
-//				
-//				
-//		Date today=new Date();
-//		if (lr.selectPayableAmountwithInterest() != null)
-//		lo.setAmountPaidtillDate(lr.selectPayableAmountwithInterest());
-//				
-//		Double amountPaid = lr.selectPayableAmountwithInterest();
-//		if (amountPaid == null) {
-//		    amountPaid = 0.0;
-//		}
-//		
-//		lo.setRemainingAmount(totalLoanAmount - amountPaid);
-//				
-//		Date nextEmiDate = new Date(today.getTime() + (1000L * 60 * 60 * 24 * 30L));
-//		lo.setNextEmiDatestart(nextEmiDate);
-//				
-//				// Calculate next EMI end date (5 days after next EMI date)
-//
-//		Date nextEmiDateEnd = new Date(nextEmiDate.getTime() + (1000L * 60 * 60 * 24 * 5L));
-//		lo.setNextEmiDateEnd(nextEmiDateEnd);
-//				
-//				// Calculate EMI statuses
-//				
-//		lo.setDefaulterCount(0);
-//		lo.setPreviousEmitStatus("Not Paid");
-//		lo.setCurrentMonthEmiStatus("Not Paid");
-//				
-//				// Calculate loan end date (adding loan tenure in months)
-//		Date loanEndDate = new Date(today.getTime() + (1000L * 60 * 60 * 24 * 30L * tenureMonths));
-//				
-//		lo.setLoanEndDate(loanEndDate);
-//		if (lo.getRemainingAmount() <= 0) { 
-//		    lo.setLoanStatus("closed"); 
-//		} else { 
-//		    lo.setLoanStatus("loan open"); 
-//		}
-//				
-//		Ledger l=lr.save(lo);
-//		if (cust.getLed() == null) {
-//		    cust.setLed(new ArrayList());
-//		}
-//		cust.getLed().add(l);
-//
-//		cr.save(cust);
-//			
-//		}
-//	return cust;
-//		
-//	
-		
-//		return null;
+	        return customer;
 	}
 }
