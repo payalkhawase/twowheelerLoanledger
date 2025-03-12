@@ -56,8 +56,7 @@ public class Customer {
 	private LoanDisbursement loandisburst;
 	
 	@OneToMany(cascade = CascadeType.ALL)
-
-	private List <Ledger> led;
+    private List <Ledger> led;
 
 	@OneToOne(cascade = CascadeType.ALL)
 	@JoinColumn(name = "sanctionId")
