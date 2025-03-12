@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import in.shriram.dreambiketwowheelerloan.ledger.model.Customer;
+import in.shriram.dreambiketwowheelerloan.ledger.model.EmiCalculator;
 import in.shriram.dreambiketwowheelerloan.ledger.model.Ledger;
 import in.shriram.dreambiketwowheelerloan.ledger.model.SanctionLetter;
 import in.shriram.dreambiketwowheelerloan.ledger.repository.CustomerRepo;
@@ -52,9 +53,11 @@ public class LedgerServiceImpl implements LedgerServiceI{
 	        double amountPaidTillDate = customer.getLed().stream().mapToDouble(Ledger::getAmountPaidtillDate).sum();
 
 	        double previousRemainingAmount = customer.getLed().isEmpty() ? payableAmountWithInterest : customer.getLed().get(customer.getLed().size() - 1).getRemainingAmount();
-	        double emi = (previousRemainingAmount * monthlyInterestRate * Math.pow(1 + monthlyInterestRate, totalMonths))
-	                    / (Math.pow(1 + monthlyInterestRate, totalMonths) - 1);
-	        remainingAmount = Math.max(0, previousRemainingAmount - emi);
+	     //   double emi = (previousRemainingAmount * monthlyInterestRate * Math.pow(1 + monthlyInterestRate, totalMonths))
+	      //              / (Math.pow(1 + monthlyInterestRate, totalMonths) - 1);
+	       
+	       double emi= EmiCalculator.emiCalculte(previousRemainingAmount, monthlyInterestRate , totalMonths);
+	        remainingAmount = Math.max(0, previousRemainingAmount -emi );
 	        amountPaidTillDate += emi;
 	        
 	        Ledger ledger = new Ledger();
